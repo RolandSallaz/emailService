@@ -1,7 +1,9 @@
-import express, { Express, Request, Response } from "express";
+import express, { Express, NextFunction, Request, Response } from "express";
 import dotenv from "dotenv";
 import nodemailer from "nodemailer";
 import Mailgen from "mailgen";
+import errorHandler from "./middlewares/errorHandler";
+import { errorLogger, requestLogger } from "./middlewares/logger";
 dotenv.config();
 
 const app: Express = express();
@@ -11,7 +13,9 @@ app.use(express.json());
 
 const mailPort = Number(process.env.EMAIL_PORT) || 465;
 
-app.post("/auth-email", (req: Request, res: Response) => {
+app.use(requestLogger);
+
+app.post("/auth-email", (req: Request, res: Response, next: NextFunction) => {
   const config = {
     host: process.env.EMAIL_HOST,
     port: mailPort,
@@ -57,10 +61,11 @@ app.post("/auth-email", (req: Request, res: Response) => {
         preview: nodemailer.getTestMessageUrl(info),
       });
     })
-    .catch((err: Error) => {
-      return res.status(500).json({ msg: err });
-    });
+    .catch(next);
 });
+
+app.use(errorLogger);
+app.use(errorHandler);
 
 app.listen(port, () => {
   console.log(`[server]: Сервис запущен на порту ${port}`);
